@@ -36,8 +36,14 @@ export function AdminMenuTab({ onMenuFileChange, onMenuUpload }: AdminMenuTabPro
             <li>
               Колонка day с номерами для каждого дня недели (Понедельник - 1 ... Пятница - 5)
             </li>
-            <li>3 блюда (2 варианта) на каждый день + напиток (2 варианта)</li>
-            <li>Колонки: day, name, description, calories</li>
+            <li>
+              8 строк ланча на день в порядке: salad×2, soup×2, main×2, drink×2, затем 9-я —
+              dessert (<code>type</code> обязателен для десерта)
+            </li>
+            <li>
+              Колонки: day, name, description, calories, type. Цена десерта на сайте фиксирована
+              (690 ₸) — из Excel не читается
+            </li>
           </ul>
         </div>
         <Button className="flex items-center gap-2" onClick={onMenuUpload}>

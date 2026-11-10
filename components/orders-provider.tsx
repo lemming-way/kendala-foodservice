@@ -4,7 +4,8 @@ import type React from "react"
 import { createContext, useCallback, useContext, useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 
-import { DayMenu } from "@/app/page"
+import { DayMenu } from "@/lib/order-types"
+import { markPositionalDessert } from "@/lib/menu-excel"
 
 import { commonApi, dropboxApi, menuApi, Order, ordersApi } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
@@ -14,13 +15,25 @@ import {
   ORDER_START_MINUTS,
   TEST_INDEX,
   BANNER,
+  DROPBOX_MENU_LC,
 } from "@/lib/constants"
 import { getMockDate } from "@/lib/mock-time"
+import {
+  QR_MENU_DAYS,
+  buildQrMenuPlaceholders,
+  dropboxFilePublicUrl,
+  matchQrMenuDayFromFileName,
+  preferRasterDropboxEntries,
+  qrMenuPlaceholderUrl,
+  type QrMenuDayNum,
+} from "@/lib/qr-menu"
 
 type WeekDay = {
   day: string
   date: string
 }
+
+export type QrMenuImage = { day: QrMenuDayNum; url: string; dlId: string }
 
 interface OrdersContextType {
   orders: Order[]
@@ -37,9 +50,13 @@ interface OrdersContextType {
   isMaintenanceMode: boolean
   setIsMaintenanceMode: (status: boolean) => void
   isBannerVisible: boolean
+  /** true after banner visibility flag fetched from API */
+  bannerStatusKnown: boolean
   setIsBannerVisible: (status: boolean) => void
   banner: { url: string; dlId: string } | null
   setBanner: (banner: { url: string; dlId: string } | null) => void
+  /** QR day images from the same dropbox select as banner */
+  qrMenuImages: Partial<Record<QrMenuDayNum, QrMenuImage>>
   loadBanner: () => Promise<void>
   isLoadingBanner: boolean
 }
@@ -55,8 +72,13 @@ export const OrdersProvider: React.FC<{
   const { toast } = useToast()
   const [orders, setOrders] = useState<Order[]>([])
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false)
-  const [isBannerVisible, setIsBannerVisible] = useState(true)
+  /** false until /api/common/banner resolves — avoids flash of afisha modal */
+  const [bannerStatusKnown, setBannerStatusKnown] = useState(false)
+  const [isBannerVisible, setIsBannerVisible] = useState(false)
   const [banner, setBanner] = useState<{ url: string; dlId: string } | null>(null)
+  const [qrMenuImages, setQrMenuImages] = useState<
+    Partial<Record<QrMenuDayNum, QrMenuImage>>
+  >(() => buildQrMenuPlaceholders())
   const [menu, setMenu] = useState<DayMenu[]>([])
   const [token, setToken] = useState<string | undefined>(initialToken)
   const [hash, setHash] = useState<string | undefined>(initialHash)
@@ -74,10 +96,21 @@ export const OrdersProvider: React.FC<{
         return {
           day: day.day,
           date: day.date,
-          dishes: resData.reduce((arrNew: DayMenu["dishes"], elem, index) => {
-            if (indexDay + 1 === elem.day) arrNew.push({ id: `${index + 1}`, ...elem })
-            return arrNew
-          }, []),
+          dishes: markPositionalDessert(
+            resData.reduce((arrNew: DayMenu["dishes"], elem, index) => {
+              if (indexDay + 1 === elem.day) {
+                arrNew.push({
+                  id: `${index + 1}`,
+                  name: elem.name,
+                  description: elem.description,
+                  calories: elem.calories,
+                  type: elem.type,
+                  day: elem.day,
+                })
+              }
+              return arrNew
+            }, []),
+          ),
         }
       })
       const noAvailableDaysMenu = getNoAvailableDays(menu)
@@ -209,24 +242,27 @@ export const OrdersProvider: React.FC<{
     } catch (error) {
       setIsBannerVisible(false)
       console.error(error)
+    } finally {
+      setBannerStatusKnown(true)
     }
   }
 
   const loadBanner = useCallback(async () => {
     setIsLoadingBanner(true)
     try {
-      const res = await dropboxApi.getFiles({private: '-1'})
+      const res = await dropboxApi.getFiles({ private: "-1", lc: DROPBOX_MENU_LC })
       if (!res.success) {
         setBanner(null)
+        setQrMenuImages(buildQrMenuPlaceholders())
         return
       }
-      
 
       const filesMap =
         res.data?.data?.["dropbox files"] ?? res.data?.["dropbox files"] ?? undefined
 
       if (!filesMap || typeof filesMap !== "object") {
         setBanner(null)
+        setQrMenuImages(buildQrMenuPlaceholders())
         return
       }
 
@@ -235,23 +271,62 @@ export const OrdersProvider: React.FC<{
         json?: { name?: string; name_upload?: string }
       }>
 
-      const match = entries.find((entry) => {
+      const bannerCandidates = entries.filter((entry) => {
         const name = entry.json?.name || entry.json?.name_upload || ""
         const base = name.split(".")[0]?.toLowerCase()
         return base === BANNER.toLowerCase()
       })
+      const match = preferRasterDropboxEntries(bannerCandidates)
 
       if (match?.dl_id) {
         setBanner({
-          url: `https://ibronevik.itest24.com/taxi_dev2/api/v1/dropbox/file/${match.dl_id}`,
-          dlId: match.dl_id,
+          url: dropboxFilePublicUrl(String(match.dl_id)),
+          dlId: String(match.dl_id),
         })
       } else {
         setBanner(null)
       }
+
+      // Same select → QR day slots (newest raster per day; svg only as fallback)
+      const byDay: Partial<
+        Record<
+          QrMenuDayNum,
+          Array<{
+            dl_id?: string
+            json?: { name?: string; name_upload?: string }
+          }>
+        >
+      > = {}
+      for (const entry of entries) {
+        const name = entry.json?.name || entry.json?.name_upload || ""
+        const day = matchQrMenuDayFromFileName(name)
+        if (day && entry.dl_id) {
+          if (!byDay[day]) byDay[day] = []
+          byDay[day]!.push(entry)
+        }
+      }
+      const nextQr: Partial<Record<QrMenuDayNum, QrMenuImage>> = {}
+      for (const d of QR_MENU_DAYS) {
+        const best = preferRasterDropboxEntries(byDay[d.day] || [])
+        if (best?.dl_id) {
+          nextQr[d.day] = {
+            day: d.day,
+            dlId: String(best.dl_id),
+            url: dropboxFilePublicUrl(String(best.dl_id)),
+          }
+        } else {
+          nextQr[d.day] = {
+            day: d.day,
+            dlId: `local-${d.day}`,
+            url: qrMenuPlaceholderUrl(d.day),
+          }
+        }
+      }
+      setQrMenuImages(nextQr)
     } catch (error) {
       console.error(error)
       setBanner(null)
+      setQrMenuImages(buildQrMenuPlaceholders())
     } finally {
       setIsLoadingBanner(false)
     }
@@ -296,9 +371,11 @@ export const OrdersProvider: React.FC<{
         isMaintenanceMode,
         setIsMaintenanceMode,
         isBannerVisible,
+        bannerStatusKnown,
         setIsBannerVisible,
         banner,
         setBanner,
+        qrMenuImages,
         loadBanner,
         isLoadingBanner
       }}
