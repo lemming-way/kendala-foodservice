@@ -463,7 +463,7 @@ export default function AdminPage() {
         const dlId = res.data.data.dl_id
         setBannerFile(null)
         setBanner({
-          url: `https://ibronevik.ru/taxi/api/v1/dropbox/file/${dlId}`,
+          url: `https://ibronevik.itest24.com/taxi_dev2/api/v1/dropbox/file/${dlId}`,
           dlId: dlId,
         })
       } else {

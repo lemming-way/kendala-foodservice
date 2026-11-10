@@ -243,7 +243,7 @@ export const OrdersProvider: React.FC<{
 
       if (match?.dl_id) {
         setBanner({
-          url: `https://ibronevik.ru/taxi/api/v1/dropbox/file/${match.dl_id}`,
+          url: `https://ibronevik.itest24.com/taxi_dev2/api/v1/dropbox/file/${match.dl_id}`,
           dlId: match.dl_id,
         })
       } else {

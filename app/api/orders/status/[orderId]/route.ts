@@ -17,7 +17,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     }
 
     const formBody = new URLSearchParams(data).toString()
-    const result = await fetch(`https://ibronevik.ru/taxi/c/0/api/v1/drive/get/${params.orderId}`, {
+    const result = await fetch(`https://ibronevik.itest24.com/taxi_dev2/c/0/api/v1/drive/get/${params.orderId}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",

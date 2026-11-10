@@ -3,7 +3,7 @@ import { TEST_INDEX } from "@/lib/constants"
 
 export async function GET() {
   try {
-    const registrData = await fetch(`https://ibronevik.ru/taxi/c/0/api/v1/data?_=${Date.now()}`, {
+    const registrData = await fetch(`https://ibronevik.itest24.com/taxi_dev2/c/0/api/v1/data?_=${Date.now()}`, {
       method: "GET",
       cache: "no-store",
     })

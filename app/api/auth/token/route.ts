@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
     const cookieStore = await cookies()
     const body = await request.json()
     const formBody = new URLSearchParams(body).toString()
-    const registrData = await fetch("https://ibronevik.ru/taxi/c/0/api/v1/token/authorized", {
+    const registrData = await fetch("https://ibronevik.itest24.com/taxi_dev2/c/0/api/v1/token/authorized", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",

@@ -233,7 +233,7 @@ function sendEmailNotification(id: number, order: ProcessedOrder): Promise<Respo
   }
 
   const formBody = new URLSearchParams(mailBody).toString()
-  return fetch("https://ibronevik.ru/taxi/c/0/api/v1/mail/4/send", {
+  return fetch("https://ibronevik.itest24.com/taxi_dev2/c/0/api/v1/mail/4/send", {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",

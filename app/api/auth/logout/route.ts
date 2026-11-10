@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 
 export async function GET() {
   try {
-    const registrData = await fetch("https://ibronevik.ru/taxi/c/0/api/v1/logout", {
+    const registrData = await fetch("https://ibronevik.itest24.com/taxi_dev2/c/0/api/v1/logout", {
       method: "GET",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",

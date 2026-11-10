@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     const formBody = new URLSearchParams(body).toString()
-    const registrData = await fetch("https://ibronevik.ru/taxi/c/0/api/v1/drive", {
+    const registrData = await fetch("https://ibronevik.itest24.com/taxi_dev2/c/0/api/v1/drive", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
       u_hash,
     })
 
-    const registrData = await fetch(`https://ibronevik.ru/taxi/c/0/api/v1/drive/now`, {
+    const registrData = await fetch(`https://ibronevik.itest24.com/taxi_dev2/c/0/api/v1/drive/now`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
