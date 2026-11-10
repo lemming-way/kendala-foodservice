@@ -85,6 +85,7 @@ export async function GET(request: NextRequest) {
     const body = JSON.stringify({
       token,
       u_hash,
+      kind: "all",   // костыль для обхода ошибки на бэкенде
     })
 
     const registrData = await fetch(`https://ibronevik.itest24.com/taxi_dev2/c/0/api/v1/drive/now`, {
